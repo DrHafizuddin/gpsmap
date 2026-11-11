@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Campus Map Preview</title>
+  <style>
+    /* ==========================================================================
+       Pixel-Art Design System & Theme Variables
+       ========================================================================== */
+    :root {
+      --bg-dark: #070c16;
+      --bg-card: #0d1726;
+      --bg-input: #080f1a;
+      --border-panel: #203552;
+      --border-highlight: #3b6091;
+      --text-main: #e2e8f0;
+      --text-dim: #8ba2c4;
+      --mint: #00ff9d;
+      --mint-dark: #00aa66;
+      --mint-text: #052416;
+      --gold: #ffd700;
+      --gold-dark: #b8860b;
+      --cyan: #38bdf8;
+      --red: #f43f5e;
+      --pixel-shadow: 3px 3px 0 #000000;
+      --pixel-shadow-sm: 2px 2px 0 #000000;
+      --font-mono: 'Courier New', Courier, 'Lucida Console', Monaco, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 10px 32px;
+      overflow-x: hidden;
+      width: 100%;
+    }
+
+    /* Subtle CRT / Pixel Scanline texture */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.22) 50%
+      );
+      background-size: 100% 4px;
+      z-index: 999;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* ==========================================================================
+       Container Layout (Single Column, Mobile-First)
+       ========================================================================== */
+    .app-container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ==========================================================================
+       Header & Pixel Panels
+       ========================================================================== */
+    header {
+      background: var(--bg-card);
+      border: 3px solid var(--border-panel);
+      box-shadow: var(--pixel-shadow);
+      padding: 12px;
+      text-align: center;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: bold;
+      letter-spacing: 1px;
+      padding: 2px 6px;
+      border: 1px solid currentColor;
+    }
+
+    .badge-mint {
+      color: var(--mint);
+      border-color: var(--mint);
+    }
+
+    .badge-gold {
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+
+    h1 {
+      font-size: 18px;
+      letter-spacing: 1.5px;
+      color: var(--mint);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border: 3px solid var(--border-panel);
+      box-shadow: var(--pixel-shadow);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 2px dashed var(--border-panel);
+      padding-bottom: 6px;
+    }
+
+    .panel-title::before {
+      content: "■";
+      color: var(--mint);
+      font-size: 10px;
+    }
+
+    /* ==========================================================================
+       Interactive Form Controls
+       ========================================================================== */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      background: var(--bg-input);
+      border: 2px solid var(--border-panel);
+      color: var(--mint);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+      border-radius: 0;
+      transition: border-color 0.15s ease;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--mint);
+      outline: 2px solid var(--mint);
+      outline-offset: 1px;
+    }
+
+    /* Custom Radio Buttons for Radius */
+    .radius-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .radio-card {
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .radio-card input {
+      position: absolute;
+      opacity: 0;
+      cursor: pointer;
+      width: 0;
+      height: 0;
+    }
+
+    .radio-custom {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--bg-input);
+      border: 2px solid var(--border-panel);
+      padding: 10px;
+      font-weight: bold;
+      font-size: 13px;
+      color: var(--text-dim);
+      min-height: 44px;
+      box-shadow: var(--pixel-shadow-sm);
+    }
+
+    .radio-card input:focus-visible + .radio-custom {
+      outline: 2px solid var(--mint);
+      outline-offset: 2px;
+    }
+
+    .radio-card input:checked + .radio-custom {
+      background: rgba(0, 255, 157, 0.12);
+      border-color: var(--mint);
+      color: var(--mint);
+      box-shadow: 2px 2px 0 var(--mint-dark);
+    }
+
+    .radio-custom::before {
+      content: "[ ]";
+      font-size: 12px;
+    }
+
+    .radio-card input:checked + .radio-custom::before {
+      content: "[X]";
+      color: var(--mint);
+    }
+
+    /* ==========================================================================
+       Buttons (Chunky Pixel Style)
+       ========================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 14px;
+      min-height: 44px;
+      border: 2px solid #000;
+      border-radius: 0;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.05s ease, box-shadow 0.05s ease;
+      touch-action: manipulation;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid #ffffff;
+      outline-offset: 2px;
+    }
+
+    .btn-mint {
+      background: var(--mint);
+      color: var(--mint-text);
+      box-shadow: var(--pixel-shadow);
+    }
+
+    .btn-mint:hover {
+      background: #39ffb2;
+    }
+
+    .btn-mint:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 #000;
+    }
+
+    .btn-slate {
+      background: #17283c;
+      color: var(--text-main);
+      border-color: #2c4a6f;
+      box-shadow: var(--pixel-shadow);
+    }
+
+    .btn-slate:hover {
+      background: #1f3753;
+      border-color: var(--cyan);
+    }
+
+    .btn-slate:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 #000;
+    }
+
+    .btn-gold {
+      background: var(--gold);
+      color: #3b2800;
+      box-shadow: var(--pixel-shadow);
+    }
+
+    .btn-gold:hover {
+      background: #ffe033;
+    }
+
+    .btn-gold:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 #000;
+    }
+
+    .btn-link {
+      background: transparent;
+      border: 2px dashed var(--mint);
+      color: var(--mint);
+      padding: 8px 12px;
+      box-shadow: none;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .btn-link:hover {
+      background: rgba(0, 255, 157, 0.1);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* ==========================================================================
+       Pixel Canvas Radar Display
+       ========================================================================== */
+    .radar-wrapper {
+      position: relative;
+      width: 100%;
+      background: #050a12;
+      border: 2px solid var(--border-panel);
+      box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 380px;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      image-rendering: pixelated;
+    }
+
+    .radar-legend {
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      font-size: 10px;
+      padding-top: 6px;
+      border-top: 1px solid var(--border-panel);
+      margin-top: 4px;
+      color: var(--text-dim);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dot-gold {
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      box-shadow: 0 0 4px var(--gold);
+    }
+
+    .dot-mint {
+      width: 8px;
+      height: 8px;
+      background: var(--mint);
+      box-shadow: 0 0 4px var(--mint);
+    }
+
+    /* ==========================================================================
+       Coordinates Display Cards
+       ========================================================================== */
+    .coord-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .coord-card {
+      background: var(--bg-input);
+      border: 2px solid var(--border-panel);
+      padding: 8px 10px;
+    }
+
+    .coord-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .coord-val {
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--mint);
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+      word-break: break-all;
+    }
+
+    .coord-val.gold {
+      color: var(--gold);
+    }
+
+    /* ==========================================================================
+       URL Box & Copy Feedback
+       ========================================================================== */
+    .url-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .url-input {
+      font-size: 11px;
+      color: #93c5fd;
+      background: #040811;
+      border: 2px solid var(--border-panel);
+      padding: 8px;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    .copy-toast {
+      min-height: 20px;
+      font-size: 11px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 0.5px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .copy-toast.visible {
+      opacity: 1;
+    }
+
+    .toast-success {
+      color: var(--mint);
+    }
+
+    .toast-manual {
+      color: var(--gold);
+    }
+
+    /* ==========================================================================
+       Sample / Fragment View (Shown when fragment is valid)
+       ========================================================================== */
+    #fragmentView {
+      display: none;
+    }
+
+    .banner-alert {
+      background: rgba(0, 255, 157, 0.08);
+      border: 2px dashed var(--mint);
+      padding: 10px;
+      text-align: center;
+      color: var(--mint);
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+
+    /* ==========================================================================
+       Footer & Utility
+       ========================================================================== */
+    footer {
+      text-align: center;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Screen Reader Only */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Header Section -->
+    <header>
+      <div class="badge-bar">
+        <span class="badge badge-mint">GPS SPHERICAL ENGINE</span>
+        <span class="badge badge-gold">R = 6,371,008.8 M</span>
+      </div>
+      <h1>Campus Map Preview</h1>
+      <p class="subtitle">UniMAP Preset Coordinate Sampler</p>
+    </header>
+
+    <!-- ============================================================== -->
+    <!-- VIEW A: GENERATOR VIEW                                         -->
+    <!-- ============================================================== -->
+    <div id="generatorView" style="display: flex; flex-direction: column; gap: 14px;">
+
+      <!-- Control Settings Panel -->
+      <section class="panel" aria-labelledby="controls-heading">
+        <h2 id="controls-heading" class="panel-title">Preset & Sampling Radius</h2>
+
+        <!-- Campus Dropdown -->
+        <div class="field-group">
+          <label for="campusSelect">Selected Campus Preset</label>
+          <select id="campusSelect">
+            <option value="FKTEN" selected>FKTEN (lname = 129)</option>
+            <option value="FTKE">FTKE (lname = 130)</option>
+          </select>
+        </div>
+
+        <!-- Radius Selection Radios (5m default) -->
+        <div class="field-group">
+          <label id="radiusGroupLabel">Randomization Radius</label>
+          <div class="radius-selector" role="radiogroup" aria-labelledby="radiusGroupLabel">
+            <label class="radio-card">
+              <input type="radio" name="radiusOption" value="5" checked>
+              <span class="radio-custom">5 METERS</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="radiusOption" value="10">
+              <span class="radio-custom">10 METERS</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Randomize Point Button -->
+        <button id="btnRandomize" class="btn btn-mint" type="button">
+          <span>⚂ RANDOMIZE POINT</span>
+        </button>
+      </section>
+
+      <!-- Visual Radar Canvas Panel -->
+      <section class="panel" aria-labelledby="radar-heading">
+        <h2 id="radar-heading" class="panel-title">Pixel Grid Preview</h2>
+
+        <div class="radar-wrapper">
+          <canvas id="radarCanvas" width="360" height="360" aria-label="Pixel grid showing campus center and randomized sample point"></canvas>
+          <div class="radar-legend">
+            <div class="legend-item">
+              <span class="dot-gold"></span>
+              <span>CAMPUS CENTER</span>
+            </div>
+            <div class="legend-item">
+              <span class="dot-mint"></span>
+              <span>SAMPLED POINT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample Point Coordinates readout (8 decimal places) -->
+        <div class="coord-grid">
+          <div class="coord-card">
+            <div class="coord-label">Sample Latitude</div>
+            <div id="genLat" class="coord-val">6.45981568</div>
+          </div>
+          <div class="coord-card">
+            <div class="coord-label">Sample Longitude</div>
+            <div id="genLon" class="coord-val">100.35167892</div>
+          </div>
+        </div>
+
+        <div class="coord-grid">
+          <div class="coord-card">
+            <div class="coord-label">Center Latitude</div>
+            <div id="centerLat" class="coord-val gold">6.45981568</div>
+          </div>
+          <div class="coord-card">
+            <div class="coord-label">Center Longitude</div>
+            <div id="centerLon" class="coord-val gold">100.35167892</div>
+          </div>
+        </div>
+
+        <!-- Google Maps Link for Generator View -->
+        <a id="btnGenGmaps" class="btn btn-gold" href="#" target="_blank" rel="noopener noreferrer">
+          <span>📍 OPEN IN GOOGLE MAPS</span>
+        </a>
+      </section>
+
+      <!-- URL Generation & Export Panel -->
+      <section class="panel" aria-labelledby="link-heading">
+        <h2 id="link-heading" class="panel-title">Touchrekod URL Fragment Link</h2>
+
+        <div class="url-container">
+          <label for="generatedLinkInput">Generated Sample Link</label>
+          <input 
+            type="text" 
+            id="generatedLinkInput" 
+            class="url-input" 
+            readonly 
+            spellcheck="false"
+            aria-label="Generated Touchrekod link with coordinates in fragment"
+          >
+          <div id="copyToast" class="copy-toast" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="button-row">
+          <button id="btnCopyLink" class="btn btn-slate" type="button">
+            <span>📋 COPY LINK</span>
+          </button>
+          <a id="btnOpenLink" class="btn btn-mint" href="#" target="_blank" rel="noopener noreferrer">
+            <span>↗ OPEN LINK</span>
+          </a>
+        </div>
+
+        <!-- Quick fragment preview test trigger within app -->
+        <button id="btnSimulateHash" class="btn btn-link" type="button" title="Test how this fragment renders in the app">
+          <span>[TEST FRAGMENT PREVIEW IN-APP]</span>
+        </button>
+      </section>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- VIEW B: FRAGMENT / SAMPLE VIEW                                 -->
+    <!-- (Rendered when URL fragment has valid sample parameters)       -->
+    <!-- ============================================================== -->
+    <div id="fragmentView">
+      <section class="panel" aria-labelledby="frag-heading">
+        <div class="banner-alert">
+          ★ ACTIVE SAMPLE FRAGMENT LOADED ★
+        </div>
+
+        <h2 id="frag-heading" class="panel-title">Link Sample Details</h2>
+
+        <div class="coord-grid">
+          <div class="coord-card">
+            <div class="coord-label">Campus Name</div>
+            <div id="fragCampusName" class="coord-val gold">FKTEN</div>
+          </div>
+          <div class="coord-card">
+            <div class="coord-label">Preset lname Code</div>
+            <div id="fragLname" class="coord-val">129</div>
+          </div>
+        </div>
+
+        <div class="coord-grid">
+          <div class="coord-label" style="grid-column: span 2;">Exact Sample Coordinates</div>
+          <div class="coord-card">
+            <div class="coord-label">Latitude (namea)</div>
+            <div id="fragLat" class="coord-val">0.00000000</div>
+          </div>
+          <div class="coord-card">
+            <div class="coord-label">Longitude (nameo)</div>
+            <div id="fragLon" class="coord-val">0.00000000</div>
+          </div>
+        </div>
+
+        <!-- Radar Canvas in Fragment View -->
+        <div class="radar-wrapper">
+          <canvas id="fragRadarCanvas" width="360" height="360" aria-label="Visual radar showing the point from fragment"></canvas>
+          <div class="radar-legend">
+            <div class="legend-item">
+              <span class="dot-gold"></span>
+              <span>CAMPUS CENTER</span>
+            </div>
+            <div class="legend-item">
+              <span class="dot-mint"></span>
+              <span>FRAGMENT POINT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Google Maps Link for Fragment View -->
+        <a id="btnFragGmaps" class="btn btn-gold" href="#" target="_blank" rel="noopener noreferrer">
+          <span>📍 OPEN IN GOOGLE MAPS</span>
+        </a>
+
+        <!-- Back to Generator Link -->
+        <button id="btnBackToPreview" class="btn btn-slate" type="button">
+          <span>« BACK TO PREVIEW</span>
+        </button>
+      </section>
+    </div>
+
+    <footer>
+      <span>CAMPUS MAP PREVIEW • MOBILE-FIRST PIXEL INTERFACE</span>
+    </footer>
+
+  </div>
+
+  <script>
+    /**
+     * =========================================================================
+     * Campus Presets & Spherical Constants
+     * =========================================================================
+     */
+    const EARTH_RADIUS = 6371008.8; // Spherical Earth Radius in meters
+
+    const CAMPUS_PRESETS = {
+      FTKE: {
+        code: 'FTKE',
+        name: 'FTKE',
+        lname: '130',
+        center: {
+          lat: 6.459490,
+          lon: 100.350497
+        }
+      },
+      FKTEN: {
+        code: 'FKTEN',
+        name: 'FKTEN',
+        lname: '129',
+        center: {
+          lat: 6.459815683092042,
+          lon: 100.35167892390652
+        }
+      }
+    };
+
+    // Global application state
+    const state = {
+      selectedCampusKey: 'FKTEN', // Default to FKTEN
+      selectedRadiusMeters: 5,     // Default to 5 meters
+      currentSample: {
+        lat: 6.45981568,
+        lon: 100.35167892,
+        distance: 0,
+        bearing: 0
+      }
+    };
+
+    /**
+     * =========================================================================
+     * Spherical Geodesy Mathematics
+     * =========================================================================
+     * Computes destination coordinate given initial center (lat1, lon1),
+     * distance in meters, and bearing in radians.
+     */
+    function calculateSphericalDestination(lat1Deg, lon1Deg, distanceMeters, bearingRad) {
+      const delta = distanceMeters / EARTH_RADIUS; // angular distance in radians
+      const phi1 = lat1Deg * (Math.PI / 180);
+      const lambda1 = lon1Deg * (Math.PI / 180);
+
+      const sinPhi1 = Math.sin(phi1);
+      const cosPhi1 = Math.cos(phi1);
+      const sinDelta = Math.sin(delta);
+      const cosDelta = Math.cos(delta);
+
+      const phi2 = Math.asin(
+        sinPhi1 * cosDelta + cosPhi1 * sinDelta * Math.cos(bearingRad)
+      );
+
+      const lambda2 = lambda1 + Math.atan2(
+        Math.sin(bearingRad) * sinDelta * cosPhi1,
+        cosDelta - sinPhi1 * Math.sin(phi2)
+      );
+
+      const lat2Deg = phi2 * (180 / Math.PI);
+      let lon2Deg = lambda2 * (180 / Math.PI);
+
+      // Normalize longitude to range [-180, +180)
+      lon2Deg = ((lon2Deg + 540) % 360) - 180;
+
+      return {
+        lat: lat2Deg,
+        lon: lon2Deg
+      };
+    }
+
+    /**
+     * Computes distance and initial bearing from center to target
+     * Used when previewing points supplied via URL fragments.
+     */
+    function computeDistanceAndBearing(lat1Deg, lon1Deg, lat2Deg, lon2Deg) {
+      const phi1 = lat1Deg * (Math.PI / 180);
+      const phi2 = lat2Deg * (Math.PI / 180);
+      const deltaPhi = (lat2Deg - lat1Deg) * (Math.PI / 180);
+      const deltaLambda = (lon2Deg - lon1Deg) * (Math.PI / 180);
+
+      const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                Math.cos(phi1) * Math.cos(phi2) *
+                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = EARTH_RADIUS * c;
+
+      const y = Math.sin(deltaLambda) * Math.cos(phi2);
+      const x = Math.cos(phi1) * Math.sin(phi2) -
+                Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+      const bearing = (Math.atan2(y, x) + 2 * Math.PI) % (2 * Math.PI);
+
+      return { distance, bearing };
+    }
+
+    /**
+     * Uniform Random Point Generator within circle:
+     * - Random bearing theta in [0, 2*PI)
+     * - Distance = radius * sqrt(random) for uniform area sampling
+     */
+    function generateUniformRandomPoint() {
+      const preset = CAMPUS_PRESETS[state.selectedCampusKey];
+      const radius = state.selectedRadiusMeters;
+
+      const randomU = Math.random();
+      const distance = radius * Math.sqrt(randomU);
+      const bearing = Math.random() * 2 * Math.PI;
+
+      const dest = calculateSphericalDestination(
+        preset.center.lat,
+        preset.center.lon,
+        distance,
+        bearing
+      );
+
+      state.currentSample = {
+        lat: dest.lat,
+        lon: dest.lon,
+        distance: distance,
+        bearing: bearing
+      };
+
+      updateGeneratorUI();
+    }
+
+    /**
+     * Format numbers to strict 8 decimal places
+     */
+    function format8(num) {
+      return Number(num).toFixed(8);
+    }
+
+    /**
+     * Builds the Google Maps Search URL
+     */
+    function buildGoogleMapsUrl(latStr, lonStr) {
+      const queryParam = encodeURIComponent(`${latStr},${lonStr}`);
+      return `https://www.google.com/maps/search/?api=1&query=${queryParam}`;
+    }
+
+    /**
+     * Builds the UniMAP Touchrekod URL:
+     * Clears existing query parameters and places sample values in fragment:
+     * #lname=<campus_preset>&namea=<latitude>&nameo=<longitude>
+     */
+    function buildTouchrekodUrl(lname, latFormatted, lonFormatted) {
+      const base = "https://id.unimap.edu.my/id/touchrekod.jsp";
+      return `${base}?lname=${lname}&namea=${latFormatted}&nameo=${lonFormatted}&pid=secret&atype=1`;
+    }
+
+    /**
+     * =========================================================================
+     * UI Renderers & Updaters
+     * =========================================================================
+     */
+    function updateGeneratorUI() {
+      const preset = CAMPUS_PRESETS[state.selectedCampusKey];
+      const latFormatted = format8(state.currentSample.lat);
+      const lonFormatted = format8(state.currentSample.lon);
+
+      // Update Center coordinates
+      document.getElementById('centerLat').textContent = format8(preset.center.lat);
+      document.getElementById('centerLon').textContent = format8(preset.center.lon);
+
+      // Update Sample coordinates display
+      document.getElementById('genLat').textContent = latFormatted;
+      document.getElementById('genLon').textContent = lonFormatted;
+
+      // Update Touchrekod URL input
+      const linkUrl = buildTouchrekodUrl(preset.lname, latFormatted, lonFormatted);
+      document.getElementById('generatedLinkInput').value = linkUrl;
+
+      // Update Open link button
+      document.getElementById('btnOpenLink').href = linkUrl;
+
+      // Update Google Maps button
+      document.getElementById('btnGenGmaps').href = buildGoogleMapsUrl(latFormatted, lonFormatted);
+
+      // Redraw Pixel Radar Canvas
+      drawPixelRadar(
+        document.getElementById('radarCanvas'),
+        preset.center,
+        state.currentSample,
+        state.selectedRadiusMeters
+      );
+    }
+
+    /**
+     * =========================================================================
+     * Pixel-Art Canvas Drawing Routine
+     * =========================================================================
+     */
+    function drawPixelRadar(canvas, centerCoord, sampleCoord, maxRadiusMeters) {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = Math.floor(w / 2);
+      const cy = Math.floor(h / 2);
+
+      // Clear Canvas to dark navy
+      ctx.fillStyle = '#050a14';
+      ctx.fillRect(0, 0, w, h);
+
+      // Pixel Grid background
+      ctx.strokeStyle = '#0f1f33';
+      ctx.lineWidth = 1;
+      const step = 20;
+      for (let x = 0; x <= w; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, 0);
+        ctx.lineTo(x + 0.5, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= h; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + 0.5);
+        ctx.lineTo(w, y + 0.5);
+        ctx.stroke();
+      }
+
+      // Visual scaling: outer radar boundary circle fits maxRadius + 2.5m buffer
+      const radarLimitMeters = Math.max(maxRadiusMeters * 1.3, 12);
+      const pixelsPerMeter = (w * 0.42) / radarLimitMeters;
+
+      // Draw Range Rings (5m and 10m rings)
+      const rings = [5, 10];
+      rings.forEach(r => {
+        const rPixels = r * pixelsPerMeter;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rPixels, 0, 2 * Math.PI);
+        if (r === maxRadiusMeters) {
+          ctx.strokeStyle = 'rgba(0, 255, 157, 0.4)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+        } else {
+          ctx.strokeStyle = '#18314e';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([2, 4]);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Label on ring
+        ctx.fillStyle = '#47698f';
+        ctx.font = '10px Courier New, monospace';
+        ctx.fillText(`${r}m`, cx + rPixels + 3, cy - 3);
+      });
+
+      // Axis crosshairs
+      ctx.strokeStyle = '#1d3b60';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, cy + 0.5);
+      ctx.lineTo(w, cy + 0.5);
+      ctx.moveTo(cx + 0.5, 0);
+      ctx.lineTo(cx + 0.5, h);
+      ctx.stroke();
+
+      // Cardinal direction letters
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 10px Courier New, monospace';
+      ctx.fillText('N', cx - 3, 14);
+      ctx.fillText('S', cx - 3, h - 6);
+      ctx.fillText('E', w - 14, cy + 3);
+      ctx.fillText('W', 5, cy + 3);
+
+      // Compute sample pixel offset
+      const { distance, bearing } = computeDistanceAndBearing(
+        centerCoord.lat,
+        centerCoord.lon,
+        sampleCoord.lat,
+        sampleCoord.lon
+      );
+
+      // Bearing 0 is North (negative Y), PI/2 is East (positive X)
+      const dxMeters = distance * Math.sin(bearing);
+      const dyMeters = -distance * Math.cos(bearing); // negative because canvas Y is inverted
+
+      const samplePixelX = Math.round(cx + dxMeters * pixelsPerMeter);
+      const samplePixelY = Math.round(cy + dyMeters * pixelsPerMeter);
+
+      // Vector Line from center to sampled point
+      ctx.strokeStyle = 'rgba(0, 255, 157, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(samplePixelX, samplePixelY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 1. Draw Campus Center Marker (Gold Pixel Crosshair & Diamond)
+      ctx.fillStyle = '#ffd700';
+      // Center 3x3 pixel box
+      ctx.fillRect(cx - 2, cy - 2, 5, 5);
+      // Cross lines
+      ctx.fillRect(cx - 6, cy - 1, 4, 3);
+      ctx.fillRect(cx + 3, cy - 1, 4, 3);
+      ctx.fillRect(cx - 1, cy - 6, 3, 4);
+      ctx.fillRect(cx - 1, cy + 3, 3, 4);
+
+      // Center text
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 9px Courier New, monospace';
+      ctx.fillText('CENTER (0,0)', cx + 8, cy + 14);
+
+      // 2. Draw Sampled Point Marker (Mint Pixel Target)
+      ctx.fillStyle = '#00ff9d';
+      ctx.fillRect(samplePixelX - 3, samplePixelY - 3, 7, 7);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(samplePixelX - 4.5, samplePixelY - 4.5, 9, 9);
+
+      // Distance tag
+      ctx.fillStyle = '#00ff9d';
+      ctx.font = 'bold 10px Courier New, monospace';
+      const distLabel = `${distance.toFixed(2)}m @ ${(bearing * 180 / Math.PI).toFixed(1)}°`;
+      const labelX = (samplePixelX + 8 + 80 > w) ? samplePixelX - 90 : samplePixelX + 8;
+      const labelY = (samplePixelY - 8 < 20) ? samplePixelY + 16 : samplePixelY - 8;
+      ctx.fillText(distLabel, labelX, labelY);
+    }
+
+    /**
+     * =========================================================================
+     * URL Fragment Routing Engine
+     * =========================================================================
+     * Checks window.location.hash for format:
+     * #lname=<campus_preset>&namea=<latitude>&nameo=<longitude>
+     */
+    function parseUrlFragment() {
+      const rawHash = window.location.hash;
+      if (!rawHash || rawHash.length < 2) return null;
+
+      const cleanHash = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+      const params = new URLSearchParams(cleanHash);
+
+      const lname = params.get('lname');
+      const namea = params.get('namea');
+      const nameo = params.get('nameo');
+
+      if (lname && namea && nameo) {
+        const lat = parseFloat(namea);
+        const lon = parseFloat(nameo);
+
+        // Verify validity of parsed numbers
+        if (!isNaN(lat) && !isNaN(lon) && isFinite(lat) && isFinite(lon)) {
+          return {
+            lname: lname.trim(),
+            namea: namea.trim(),
+            nameo: nameo.trim(),
+            lat: lat,
+            lon: lon
+          };
+        }
+      }
+      return null;
+    }
+
+    function checkRouting() {
+      const parsedSample = parseUrlFragment();
+
+      const generatorView = document.getElementById('generatorView');
+      const fragmentView = document.getElementById('fragmentView');
+
+      if (parsedSample) {
+        // Valid Fragment detected: Switch to Fragment View
+        generatorView.style.display = 'none';
+        fragmentView.style.display = 'flex';
+        fragmentView.style.flexDirection = 'column';
+        fragmentView.style.gap = '14px';
+
+        // Match campus preset by lname code
+        let matchedCampus = Object.values(CAMPUS_PRESETS).find(
+          c => c.lname === parsedSample.lname
+        );
+
+        const campusName = matchedCampus ? matchedCampus.name : `CUSTOM (lname=${parsedSample.lname})`;
+        const defaultCenter = matchedCampus 
+          ? matchedCampus.center 
+          : { lat: parsedSample.lat, lon: parsedSample.lon };
+
+        // Populate fields
+        document.getElementById('fragCampusName').textContent = campusName;
+        document.getElementById('fragLname').textContent = parsedSample.lname;
+        document.getElementById('fragLat').textContent = parsedSample.namea;
+        document.getElementById('fragLon').textContent = parsedSample.nameo;
+
+        // Set Google Maps Link
+        const gmapsBtn = document.getElementById('btnFragGmaps');
+        gmapsBtn.href = buildGoogleMapsUrl(parsedSample.namea, parsedSample.nameo);
+
+        // Draw Fragment Radar
+        const sampleCoord = {
+          lat: parsedSample.lat,
+          lon: parsedSample.lon
+        };
+        drawPixelRadar(
+          document.getElementById('fragRadarCanvas'),
+          defaultCenter,
+          sampleCoord,
+          10
+        );
+
+      } else {
+        // Invalid or Missing Fragment: Show Generator View
+        generatorView.style.display = 'flex';
+        fragmentView.style.display = 'none';
+
+        // If first run, ensure UI matches initial state
+        updateGeneratorUI();
+      }
+    }
+
+    /**
+     * =========================================================================
+     * Clipboard & Action Handlers
+     * =========================================================================
+     */
+    function copyLinkToClipboard() {
+      const input = document.getElementById('generatedLinkInput');
+      const toast = document.getElementById('copyToast');
+
+      let copied = false;
+
+      // Method 1: Modern Async Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(input.value)
+          .then(() => showToast('✔ LINK COPIED TO CLIPBOARD!', 'toast-success'))
+          .catch(() => fallbackCopy(input));
+      } else {
+        // Method 2: Fallback for local files / non-secure contexts
+        fallbackCopy(input);
+      }
+    }
+
+    function fallbackCopy(input) {
+      input.focus();
+      input.select();
+      input.setSelectionRange(0, 99999); // Mobile compatibility
+
+      let success = false;
+      try {
+        success = document.execCommand('copy');
+      } catch (err) {
+        success = false;
+      }
+
+      if (success) {
+        showToast('✔ LINK COPIED TO CLIPBOARD!', 'toast-success');
+      } else {
+        showToast('⚠ URL SELECTED: PRESS CTRL+C TO COPY', 'toast-manual');
+      }
+    }
+
+    let toastTimer = null;
+    function showToast(message, className) {
+      const toast = document.getElementById('copyToast');
+      toast.textContent = message;
+      toast.className = `copy-toast visible ${className}`;
+
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.className = 'copy-toast';
+      }, 3500);
+    }
+
+    /**
+     * =========================================================================
+     * Event Listeners Registration
+     * =========================================================================
+     */
+    function initEventListeners() {
+      // Campus Preset dropdown change
+      document.getElementById('campusSelect').addEventListener('change', function(e) {
+        state.selectedCampusKey = e.target.value;
+        generateUniformRandomPoint();
+      });
+
+      // Radius radio buttons change
+      const radiusRadios = document.querySelectorAll('input[name="radiusOption"]');
+      radiusRadios.forEach(radio => {
+        radio.addEventListener('change', function(e) {
+          if (e.target.checked) {
+            state.selectedRadiusMeters = parseFloat(e.target.value);
+            generateUniformRandomPoint();
+          }
+        });
+      });
+
+      // Randomize Point button tap
+      document.getElementById('btnRandomize').addEventListener('click', function() {
+        generateUniformRandomPoint();
+      });
+
+      // Copy link button
+      document.getElementById('btnCopyLink').addEventListener('click', copyLinkToClipboard);
+
+      // In-app fragment test button (simulates clicking the generated link in-app)
+      document.getElementById('btnSimulateHash').addEventListener('click', function() {
+        const preset = CAMPUS_PRESETS[state.selectedCampusKey];
+        const latFormatted = format8(state.currentSample.lat);
+        const lonFormatted = format8(state.currentSample.lon);
+        window.location.hash = `lname=${preset.lname}&namea=${latFormatted}&nameo=${lonFormatted}`;
+      });
+
+      // Back to Preview link
+      document.getElementById('btnBackToPreview').addEventListener('click', function() {
+        // Clear fragment and trigger router
+        if (history.pushState) {
+          history.pushState('', document.title, window.location.pathname + window.location.search);
+        } else {
+          window.location.hash = '';
+        }
+        checkRouting();
+      });
+
+      // Listen for hash changes (e.g., browser back/forward or external link)
+      window.addEventListener('hashchange', checkRouting);
+
+      // Window resize re-draws radar canvas
+      window.addEventListener('resize', function() {
+        if (document.getElementById('generatorView').style.display !== 'none') {
+          const preset = CAMPUS_PRESETS[state.selectedCampusKey];
+          drawPixelRadar(
+            document.getElementById('radarCanvas'),
+            preset.center,
+            state.currentSample,
+            state.selectedRadiusMeters
+          );
+        } else {
+          checkRouting();
+        }
+      });
+    }
+
+    /**
+     * =========================================================================
+     * Application Initialization
+     * =========================================================================
+     */
+    window.onload = function() {
+      initEventListeners();
+
+      // Check if started with an existing valid fragment in URL
+      const hasInitialFragment = parseUrlFragment() !== null;
+
+      if (!hasInitialFragment) {
+        // Default to FKTEN and 5m, and generate the first point
+        state.selectedCampusKey = 'FKTEN';
+        state.selectedRadiusMeters = 5;
+        document.getElementById('campusSelect').value = 'FKTEN';
+        document.querySelector('input[name="radiusOption"][value="5"]').checked = true;
+
+        generateUniformRandomPoint();
+      }
+
+      checkRouting();
+    };
+  </script>
+</body>
+</html>
